@@ -1,6 +1,6 @@
 # FastAPI Transactions API
 
-This is a FastAPI application that provides endpoints for user registration, login, and managing transactions for stocks. The application implements JWT authentication and offers functionality to create, retrieve, update, and delete transactions associated with users.
+This is a FastAPI application that provides endpoints for user registration, login, and managing transactions for stocks. The application implements JWT authentication and offers functionality to create, retrieve, update transactions associated with users.
 
 ## Features
 

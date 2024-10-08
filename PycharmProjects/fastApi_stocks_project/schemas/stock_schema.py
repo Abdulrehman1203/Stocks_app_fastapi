@@ -3,14 +3,12 @@ from pydantic import BaseModel
 
 class StockCreate(BaseModel):
     ticker: str
-    price: float
+    stock_name: str
+    stock_price: float
 
 
-class StockResponse(BaseModel):
+class StockResponse(StockCreate):
     id: int
-    ticker: str
-    price: float
 
     class Config:
         from_attributes = True
-

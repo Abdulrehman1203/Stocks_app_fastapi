@@ -1,78 +1,129 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from common.authentication import get_current_user
 from database.db import get_db
+from middleware.logs import logger
 from models.transaction import Transaction
-from models.user import User
-from models.stock import Stock
-
-from schemas.transaction_schema import TransactionCreate, TransactionResponse
+from models.stock import Stocks
+from models.users import Users
+from schemas.transaction_schema import Transaction_create, TransactionResponse
+from datetime import datetime
 
 router = APIRouter()
 
 
-# Create a new transaction
-@router.post("/transaction/", response_model=TransactionResponse)
-def create_transaction(transaction_data: TransactionCreate, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == transaction_data.user_id).first()
-    stock = db.query(Stock).filter(Stock.id == transaction_data.ticker_id).first()
+@router.post("/transactions", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
+async def create_transaction(
+        transaction: Transaction_create,
+        db: Session = Depends(get_db),
+        current_user: str = Depends(get_current_user)
+):
+    """
+    Creates a new transaction (buy/sell stocks), checks balance, updates accordingly.
+    """
+    if transaction.transaction_volume <= 0:
+        raise HTTPException(status_code=404, detail="Volume must be greater than 0")
 
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if transaction.transaction_type not in ["BUY", "SELL", "sell", "buy"]:
+        raise HTTPException(status_code=404, detail="Transaction type must be BUY or SELL")
+
+    stock = db.query(Stocks).filter(Stocks.ticker == transaction.ticker).first()
     if not stock:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock not found")
+        raise HTTPException(status_code=404, detail="Stock not found")
 
-    # Example logic: If the user is buying, ensure they have enough balance
-    if transaction_data.transaction_type == "BUY":
-        total_cost = transaction_data.transaction_volume * stock.price
-        if user.balance < total_cost:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient balance")
+    # Query user by username
+    user = db.query(Users).filter(Users.username == transaction.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        user.balance -= total_cost
-    else:
-        total_cost = transaction_data.transaction_volume * stock.price
-        if transaction_data.transaction_type == "SELL":
-            user.balance -= total_cost
+    transaction_price = stock.stock_price * transaction.transaction_volume
 
-    transaction = Transaction(
+    if transaction.transaction_type == 'BUY' or 'buy':
+        if user.balance < transaction_price:
+            raise HTTPException(status_code=400, detail="Insufficient balance")
+        user.balance -= transaction_price
+    elif transaction.transaction_type == 'SELL' or 'sell':
+        user.balance += transaction_price
+
+    logger.info(f" {transaction.transaction_type} Transaction is created for: {user.username}")
+
+    new_transaction = Transaction(
         user_id=user.id,
         ticker_id=stock.id,
-        transaction_type=transaction_data.transaction_type,
-        transaction_volume=transaction_data.transaction_volume,
-        transaction_price=stock.price * transaction_data.transaction_volume,
+        transaction_price=transaction_price,
+        transaction_volume=transaction.transaction_volume,
+        transaction_type=transaction.transaction_type
     )
 
-    db.add(transaction)
+    db.add(new_transaction)
     db.commit()
-    db.refresh(transaction)
-    return transaction
+    db.refresh(new_transaction)
+
+    response = TransactionResponse(
+        id=new_transaction.id,
+        transaction_volume=new_transaction.transaction_volume,
+        transaction_type=new_transaction.transaction_type,
+        transaction_price=new_transaction.transaction_price,
+        created_time=new_transaction.created_time,
+        username=user.username,
+        ticker=stock.ticker
+    )
+
+    return response
 
 
-# Get a user's transaction history
-@router.get("/user/{user_id}/transactions/", response_model=list[TransactionResponse])
-def get_user_transactions(user_id: int, db: Session = Depends(get_db)):
-    transactions = db.query(Transaction).filter(Transaction.user_id == user_id).all()
+@router.get("/transactions/user/{username}", response_model=list[TransactionResponse],
+            status_code=status.HTTP_200_OK)
+async def get_transactions_by_username(username: str, db: Session = Depends(get_db)):
+    user = db.query(Users).filter(Users.username == username).first()
+    logger.info(f" fetching transactions data for user: {user.username}")
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    transactions = db.query(Transaction).filter(Transaction.user_id == user.id).all()
+
     if not transactions:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No transactions found for this user")
-    return transactions
+        raise HTTPException(status_code=404, detail="No transactions found for this user")
+
+    response = []
+    for transaction in transactions:
+        response.append(TransactionResponse(
+            id=transaction.id,
+            transaction_volume=transaction.transaction_volume,
+            transaction_type=transaction.transaction_type,
+            transaction_price=transaction.transaction_price,
+            created_time=transaction.created_time,
+            username=user.username,
+            ticker=transaction.ticker.ticker
+        ))
+
+    return response
 
 
-@router.get("/transactions/{user_id}/", response_model=list[TransactionResponse])
-def get_transactions_by_user_and_time(
-        user_id: int,
-        start_time: datetime,
-        end_time: datetime,
+@router.get("/transactions/{username}/by-date", response_model=list[TransactionResponse],
+            status_code=status.HTTP_200_OK)
+async def get_transactions_by_time(
+        username: str,
+        start_time: str,
+        end_time: str,
         db: Session = Depends(get_db)
 ):
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user_id,
-        Transaction.created_at >= start_time,
-        Transaction.created_at <= end_time
-    ).all()
+    user = db.query(Users).filter(Users.username == username).first()
+    logger.info(f" fetching transactions data for user: {user.username} from {start_time} to {end_time}")
 
-    if not transactions:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="No transactions found for this user in the specified time range")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        start_timestamp = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        end_timestamp = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.created_time.between(start_timestamp, end_timestamp)
+    ).all()
 
     return transactions

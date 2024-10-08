@@ -1,26 +1,16 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class UserCreate(BaseModel):
     username: str
     password: str
-    balance: int
+    balance: float
 
 
 class UserResponse(BaseModel):
     id: int
     username: str
-    balance: int
+    balance: float
 
     class Config:
-        orm_mode = True
-
-
-class RegistrationResponse(BaseModel):
-    user: UserResponse
-    token: str
-
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
+        from_attributes = True

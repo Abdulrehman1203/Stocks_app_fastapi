@@ -11,7 +11,9 @@ router = APIRouter()
 
 
 @router.post("/stocks/", response_model=StockResponse)
-def create_stock(stock: StockCreate, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+def create_stock(stock: StockCreate,
+                 db: Session = Depends(get_db),
+                 current_user: str = Depends(get_current_user)):
     existing_stock = db.query(Stocks).filter(Stocks.ticker == stock.ticker).first()
     if existing_stock:
         raise HTTPException(status_code=400, detail="Stock with this ticker already exists")
@@ -32,7 +34,7 @@ def create_stock(stock: StockCreate, db: Session = Depends(get_db), current_user
 
 
 @router.get("/stocks/", response_model=list[StockResponse])
-def list_stocks(db: Session = Depends(get_db)):
+def get_all_stocks(db: Session = Depends(get_db)):
     stocks = db.query(Stocks).all()
     logger.info(f"fetching all stocks")
 

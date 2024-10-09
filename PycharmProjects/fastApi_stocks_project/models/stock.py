@@ -3,7 +3,6 @@ from database.db import Base
 from sqlalchemy.orm import relationship
 
 
-
 class Stocks(Base):
     """
     A model representing a stock with id, ticker, price, and name.
@@ -18,4 +17,3 @@ class Stocks(Base):
 
     class Config:
         from_attributes = True
-

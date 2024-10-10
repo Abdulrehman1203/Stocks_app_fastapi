@@ -30,8 +30,8 @@ This is a FastAPI application that provides endpoints for user registration, log
 1. Clone the repository:
 
    ```bash
-   git clone <https://github.com/Abdulrehman1203/Stocks_app_fastapi.git>
-   cd <Stocks_app_fastapi>
+   git clone https://github.com/Abdulrehman1203/Stocks_app_fastapi.git
+   cd Stocks_app_fastapi
    ```
 
 

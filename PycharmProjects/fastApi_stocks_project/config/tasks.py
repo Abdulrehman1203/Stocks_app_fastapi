@@ -8,6 +8,10 @@ celery = Celery('tasks', broker="redis://localhost:6379/0", backend="redis://loc
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+celery.conf.update(
+    task_time_limit=3
+)
+
 
 @celery.task
 def fetch_all_stocks():

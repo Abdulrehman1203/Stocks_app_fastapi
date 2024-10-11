@@ -1,0 +1,33 @@
+version: '3.11'  # Specify the version of the Docker Compose file format
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 5571
+      POSTGRES_DB: my_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    command: uvicorn scripts.run:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/code
+    ports:
+      - "8001:8000"  # Host:Container
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:5571@host.docker.internal:5433/my_db
+    depends_on:
+      - db
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

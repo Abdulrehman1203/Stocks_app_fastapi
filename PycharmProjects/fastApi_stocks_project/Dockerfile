@@ -17,17 +17,12 @@ COPY . /app
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Make ports for FastAPI, Flower, and Redis available
-EXPOSE 8000 5555 6379
 
-# Start Redis server
-RUN service redis-server start
-
-# Run Alembic migrations
+EXPOSE 8000 6379
 
 
 # Define environment variable for FastAPI
 ENV ENVIRONMENT=production
 
 # Define the entrypoint for the app, running Uvicorn for FastAPI
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "scripts.run:app", "--host", "0.0.0.0", "--port", "8000"]

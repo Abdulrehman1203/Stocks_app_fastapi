@@ -2,7 +2,7 @@ from celery import Celery
 
 
 class Settings:
-    SQLALCHEMY_DATABASE_URL = "postgresql+psycopg2://postgres:5571@localhost:5433/new_db"
+    SQLALCHEMY_DATABASE_URL = "postgresql+psycopg2://postgres:5571@db:5433/new_db"
 
 
 settings = Settings()
@@ -22,7 +22,7 @@ celery.conf.update(
     beat_schedule={
         'fetch_stocks_every_minute': {
             'task': 'tasks.fetch_all_stocks',
-            'schedule': 10.0,  # Run every 60 seconds
+            'schedule': 10.0,
         },
     }
 )

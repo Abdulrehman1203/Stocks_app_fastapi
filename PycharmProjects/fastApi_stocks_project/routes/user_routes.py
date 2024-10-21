@@ -1,3 +1,5 @@
+from fastapi.security import OAuth2PasswordRequestForm
+
 from middleware.logs import logger
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -39,6 +41,16 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=500, detail="An error occurred while creating the user")
+
+
+@router.post("/login")
+async def login_oauth2(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    db_user = db.query(Users).filter_by(username=form_data.username).first()
+    if not db_user or not verify_password(form_data.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token = create_access_token(data={"sub": db_user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.get("/users/{username}", response_model=UserResponse, status_code=status.HTTP_200_OK)

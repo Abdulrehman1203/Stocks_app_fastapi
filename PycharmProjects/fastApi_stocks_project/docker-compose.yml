@@ -1,15 +1,35 @@
 
+
 services:
   db:
     image: postgres:16
+    hostname: db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 5571
       POSTGRES_DB: new_db
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db_init:/docker-entrypoint-initdb.d/:ro
+
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     build: .
@@ -19,14 +39,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:5571@db:5433/new_db
+      DATABASE_URL: postgresql+psycopg2://postgres:5571@db:5432/new_db
     depends_on:
-      - db
-
-#  redis:
-#    image: redis:alpine
-#    ports:
-#      - "6379:6379"
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

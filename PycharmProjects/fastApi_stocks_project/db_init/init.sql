@@ -25,6 +25,3 @@ CREATE TABLE IF NOT EXISTS transactions (
     created_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Optionally, insert some initial data
--- INSERT INTO users (username, hashed_password, balance) VALUES ('test_user', 'hashed_password_here', 1000);
--- INSERT INTO stocks (ticker, stock_price, stock_name) VALUES ('AAPL', 150.00, 'Apple Inc.');

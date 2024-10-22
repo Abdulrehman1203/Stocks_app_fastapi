@@ -4,12 +4,17 @@ from middleware.logs import logger
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from common.authentication import get_password_hash, pwd_context, create_access_token, verify_password
+from common.authentication import pwd_context, create_access_token, verify_password
 from models.users import Users
 from schemas.user_schema import UserCreate, UserResponse
 from database.db import get_db
 
 router = APIRouter()
+
+
+@router.get("/")
+def index():
+    return {"message": "<<<<< Welcome to the stock app >>>>>"}
 
 
 @router.post("/register")
